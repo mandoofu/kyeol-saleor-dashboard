@@ -1,3 +1,0 @@
-export const WARNING_ICON_COLOR = "#FFB84E";
-export const WARNING_ICON_COLOR_LIGHTER = "#FFD87E";
-export const SUCCESS_ICON_COLOR = "#0ABF53";
