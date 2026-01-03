@@ -1,0 +1,129 @@
+name: Run Playwright tests
+description: Run e2e tests using Playwright
+inputs:
+  BASE_URL:
+    description: "Dashboard base url"
+    required: true
+  API_URL:
+    description: "API url"
+    required: true
+  E2E_USER_NAME:
+    description: "Username for e2e tests"
+    required: true
+  E2E_USER_PASSWORD:
+    description: "Password for e2e tests"
+    required: true
+  E2E_PERMISSIONS_USERS_PASSWORD:
+    description: "Permissions user password for e2e tests"
+    required: true
+  SHARD:
+    description: "Shard number"
+    required: true
+  MAILPITURL:
+    description: "mailpit uri"
+    required: true
+  PW_WORKERS:
+    description: "Playwright workers"
+    required: true
+  PW_RETRIES:
+    description: "Playwright retries"
+    required: true
+  PROJECT:
+    description: "Project name from playwright config"
+    required: false
+    default: "e2e"
+  ACCOUNTS:
+    description: "Accounts hash"
+    required: true
+  E2E_ENCODE_PASS:
+    description: "Password for encoding credentials"
+    required: true
+  BRANCH_NAME:
+    description: "Branch name"
+    required: true
+  SALEOR_CLOUD_SERVICE:
+    description: "Saleor Cloud service"
+    required: true
+  DASHBOARD_VERSION:
+    description: "Dashboard version"
+    required: false
+  BUILD_NUMBER:
+    description: "GH Actions run ID"
+    required: false
+  BUILD_URL:
+    description: "GH actions url"
+    required: false
+
+runs:
+  using: "composite"
+  steps:
+    - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: ".nvmrc"
+        cache: "pnpm"
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install
+
+    - name: Restore accounts
+      uses: ./.github/actions/restore-accounts
+      with:
+        BASE_URL: ${{ inputs.BASE_URL }}
+        API_URL: ${{ inputs.API_URL }}
+        ACCOUNTS: ${{ inputs.ACCOUNTS }}
+        E2E_ENCODE_PASS: ${{ inputs.E2E_ENCODE_PASS }}
+
+    - name: Install Playwright Browsers
+      shell: bash
+      run: pnpm exec playwright install --with-deps chromium
+
+    - name: Run tests
+      shell: bash
+      env:
+        ## backward compatibility for older versions
+        API_URI: ${{ inputs.API_URL }}
+
+        API_URL: ${{ inputs.API_URL }}
+        BASE_URL: ${{ inputs.BASE_URL }}
+        E2E_USER_NAME: ${{ inputs.E2E_USER_NAME }}
+        E2E_USER_PASSWORD: ${{ inputs.E2E_USER_PASSWORD }}
+        E2E_PERMISSIONS_USERS_PASSWORD: ${{ inputs.E2E_PERMISSIONS_USERS_PASSWORD }}
+        SHARD_NUMBER: ${{ inputs.SHARD }}
+        MAILPITURL: ${{ inputs.MAILPITURL }}
+        URL_TO_RUN: ${{ inputs.URL_TO_RUN }}
+        WORKERS: ${{ inputs.PW_WORKERS }}
+        RETRIES: ${{ inputs.PW_RETRIES }}
+        PROJECT: ${{ inputs.PROJECT }}
+        BRANCH_NAME: ${{ inputs.BRANCH_NAME }}
+        SALEOR_CLOUD_SERVICE: ${{ inputs.SALEOR_CLOUD_SERVICE }}
+        DASHBOARD_VERSION: ${{ inputs.DASHBOARD_VERSION }}
+        BUILD_NUMBER: ${{ inputs.BUILD_NUMBER }}
+        BUILD_URL: ${{ inputs.BUILD_URL }}
+
+      run: |
+        PROJECTS=($PROJECT)
+        PROJECT_PARAMS=""
+        for PROJECT in "${PROJECTS[@]}"; do
+          PROJECT_PARAMS+="--project=${PROJECT} "
+        done
+        echo "reportName=all-blob-reports-${SHARD_NUMBER%%/*}" >> $GITHUB_ENV
+        echo "ctrfReport=ctrf-report-${SHARD_NUMBER%%/*}" >> $GITHUB_ENV
+        pnpm exec playwright test --grep "#e2e" $PROJECT_PARAMS --shard "$SHARD_NUMBER"
+
+    - name: Upload blob report to GitHub Actions Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ${{ env.reportName }}
+        path: blob-report
+        retention-days: 1
+
+    - name: Upload ctrf report to GitHub Actions Artifacts
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: ${{ env.ctrfReport }}
+        path: ctrf/ctrf-report-*.json
+        retention-days: 1

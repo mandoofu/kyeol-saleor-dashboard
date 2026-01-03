@@ -1,0 +1,51 @@
+name: Merge playwright reports
+description: Merge reports from all shards
+
+inputs:
+  PASSWORD_FOR_DECODING_ARTIFACT:
+    description: "Password for decoding artifact"
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+    - uses: actions/setup-node@v4
+      with:
+        node-version-file: ".nvmrc"
+        cache: "pnpm"
+
+    - name: Install dependencies
+      shell: bash
+      run: pnpm install
+
+    - name: Download blob reports from GitHub Actions Artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: all-blob-reports
+        pattern: all-blob-reports-*
+        merge-multiple: true
+
+    - name: Merge into HTML Report
+      shell: bash
+      env:
+        PASSWORD_FOR_DECODING_ARTIFACT: ${{ inputs.PASSWORD_FOR_DECODING_ARTIFACT }}
+      run: |
+        pnpm exec playwright merge-reports --reporter html ./all-blob-reports
+        zip -P "$PASSWORD_FOR_DECODING_ARTIFACT" secure-report.zip -r ./playwright-report
+
+    - name: Upload HTML report
+      uses: actions/upload-artifact@v4
+      with:
+        name: html-report--attempt-${{ github.run_attempt }}
+        path: secure-report.zip
+        retention-days: 14
+
+    - name: Merge blob reports
+      uses: actions/upload-artifact/merge@v4
+      with:
+        name: merged-blob-reports
+        path: all-blob-reports
+        pattern: all-blob-reports-*
+        retention-days: 7
+        delete-merged: true
