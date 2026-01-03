@@ -1,85 +1,105 @@
-<img width="1920" height="1080" alt="Saleor Dashboard 25/26" src="https://github.com/user-attachments/assets/c9705611-2729-4e65-ae35-22081f03c569" />
+# 📊 kyeol-saleor-dashboard
 
-<div align="center">
-  <h1>Saleor Dashboard</h1>
-</div>
+> **KYEOL Saleor Dashboard - React 기반 관리자 대시보드**
 
-<div align="center">
-  <p>A GraphQL-powered, single-page dashboard application for <a href="https://github.com/saleor/saleor">Saleor</a>.</p>
-</div>
+---
 
-<div align="center">
- Get to know Saleor: <br>
-  <a href="https://saleor.io/cloud/talk-to-us?utm_source=github&utm_medium=readme&utm_campaign=repo_dashboard">Talk to a human</a>
-  <span> | </span>
-  <a href="https://cloud.saleor.io/signup?utm_source=github&utm_medium=readme&utm_campaign=repo_dashboard">Talk to the API</a>
-</div>
+## 📌 이 레포는 무엇을 하는가
 
-<br>
+Saleor GraphQL API를 사용하는 **관리자용 대시보드**입니다.
 
-<div align="center">
-  <a href="https://saleor.io/">🏠 Website</a>
-  <span> • </span>
-  <a href="https://docs.saleor.io/">📚 Docs</a>
-  <span> • </span>
-  <a href="https://saleor.io/blog/">📰 Blog</a>
-  <span> • </span>
-  <a href="https://twitter.com/getsaleor">🐦 Twitter</a>
-  <span> • </span>
-  <a href="https://saleor.io/discord">💬 Discord</a>
-</div>
+**주요 기능**:
+- 상품/주문/고객 관리
+- 재고 관리
+- 마케팅/할인 설정
+- 사용자 권한 관리
 
-<div align="center">
-   <span> • </span>
-  <a href="https://githubbox.com/saleor/saleor-dashboard">🔎 Explore Code</a>
-</div>
+**기술 스택**:
+- React 18+
+- TypeScript
+- Apollo Client (GraphQL)
+- Material-UI
 
-## Prerequisites
+---
 
-- Node.js v22 (recommended)
-- A running instance of [Saleor](https://github.com/saleor/saleor/)
-- PNPM package manager - preferably installed via [corepack](https://pnpm.io/installation#using-corepack)
+## 👤 언제 / 누가 / 왜 사용하는가
 
-> [!NOTE]
-> Currently both Node v22, v20 are supported. We recommend using Node v22, since support for older versions will be dropped.
+| 상황 | 사용 여부 |
+|------|:--------:|
+| 대시보드 UI 개발 | ✅ 사용 |
+| 새 기능 추가 | ✅ 사용 |
+| Kubernetes 배포 | ❌ 미사용 (kyeol-app-gitops 사용) |
 
-## Development
+---
 
-1. Clone the repository:
+## 🏛️ 전체 아키텍처에서의 위치
 
-```bash
-git clone https://github.com/saleor/saleor-dashboard.git
+```
+[이 레포] kyeol-saleor-dashboard
+    ↓ (GitHub Actions: Docker Build & Push)
+[ECR] min-kyeol-*-dashboard:*-latest
+    ↓ (이미지 참조)
+[kyeol-app-gitops] Deployment 배포
+    ↓
+[EKS] Pod 실행
+    ↓
+[인터넷] *-dashboard-kyeol.msp-g1.click
 ```
 
-2. Enter the project directory:
+---
 
-```bash
-cd saleor-dashboard
+## 📁 주요 디렉터리 설명
+
+```
+kyeol-saleor-dashboard/
+├── src/                   # 소스 코드
+│   ├── components/       # React 컴포넌트
+│   ├── pages/            # 페이지 컴포넌트
+│   └── graphql/          # GraphQL 스키마/쿼리
+├── .github/
+│   └── workflows/
+│       └── build-push-dashboard-ecr.yml  # ECR 빌드/푸시
+├── Dockerfile             # 컨테이너 이미지 정의
+└── vite.config.js         # Vite 설정
 ```
 
-3. Install the dependencies:
+---
 
-```bash
-pnpm install
+## ⚠️ 주의사항
+
+### 🔧 로컬 개발
+
+```powershell
+npm install
+npm run dev  # localhost:9000
 ```
 
-4. Configure the env vars as described in [docs/configuration.md](docs/configuration.md).
+### 🔧 빌드 시 API_URL 필요
 
-5. Start the development server with:
-
-```bash
-pnpm run dev
+Dashboard는 빌드 시점에 API URL이 필요합니다:
+```powershell
+API_URL=https://your-saleor-api.com/graphql/ npm run build
 ```
 
-> Note:
-> If you see CORS errors, check [CORS configuration](https://docs.saleor.io/setup/configuration#allowed_client_hosts) of your Saleor instance or CORS settings in the Cloud Console.
+---
 
-## Docs
+## 🔗 다른 레포와의 관계
 
-- [Configuration ⚙️](docs/configuration.md)
-- [Error tracking ⚠️](docs/error-tracking.md)
-- [Running tests 🏁](docs/running-tests.md)
-- [Usage with Docker 🐳](docs/docker.md)
-- [Sentry adapter 🗼](docs/sentry-adapter.md)
-- [Deployment 🌐](docs/deployment.md)
-- [Developing with stable and staging Saleor graphql.schema](docs/multi-schema.md)
+| 레포지토리 | 관계 |
+|-----------|------|
+| kyeol-app-gitops | 이 레포의 이미지를 배포 |
+| kyeol-infra-terraform | ECR 레포지토리 생성 |
+
+---
+
+## 🚀 CI/CD (GitHub Actions)
+
+`main` 브랜치 push 시 자동 실행:
+- DEV, STAGE, PROD 환경별 빌드 (환경별 API_URL 적용)
+- 환경별 ECR 레포지토리에 push
+
+**태그 규칙**: `{env}-latest`, `{env}-{commit-sha}`
+
+---
+
+> **마지막 업데이트**: 2026-01-03
